@@ -1,0 +1,6 @@
+Debug/
+.settings/
+.launches/
+.launch/
+.ai/
+*.launch
