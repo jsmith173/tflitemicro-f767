@@ -19,7 +19,7 @@ limitations under the License.
 #include "main.h"
 #include "img_array.h"
 
-#include "tensorflow/lite/micro/all_ops_resolver.h"
+#include "tensorflow/lite/micro/limited_ops_resolver.h"
 #include "constants.h"
 #include "output_handler.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"
@@ -66,7 +66,7 @@ int ai_setup() {
 
   // This pulls in all the operation implementations we need.
   // NOLINTNEXTLINE(runtime-global-variables)
-  static tflite::AllOpsResolver resolver;
+  static tflite::LimitedOpsResolver resolver;
 
   // Build an interpreter to run the model with.
   static tflite::MicroInterpreter static_interpreter(
@@ -117,7 +117,12 @@ int argmax()
   return idx;
 }
 
-int ai_result[32];
+#define IMG_SIZE (96*96*3)
+
+volatile unsigned char p_ext_input_data[IMG_SIZE];
+volatile uint8_t* input_data_uint8=NULL;
+
+//#define ENABLE_COPY_ORIGINAL_IMAGE
 
 // The name of this function is important for Arduino compatibility.
 int ai_loop() {
@@ -130,25 +135,30 @@ int ai_loop() {
   if (dim_size == 4)
    dim_pic = input->dims->data[3];
   int N = dim_w*dim_h;
-  float *input_data_float=NULL;
-  uint8_t* input_data_uint8=NULL;
   int passed, data, k;
   uint8_t ui8Data;
+  
+  // In this model we have input->params.scale=1, input->params.zero_point=0
   
   input_data_uint8 = tflite::GetTensorData<uint8_t>(input);
 
   // Copy the buffer to input tensor
+  #ifdef ENABLE_COPY_ORIGINAL_IMAGE
   k = 0;
   for (int i = 0; i < N; i++) {
    data = img_array[i];
    for (int j = 0; j < 3; j++) {
 	ui8Data = data & 0xFF;
-    float x = ui8Data;
-    uint8_t x_quantized = x / input->params.scale + input->params.zero_point;
-    input_data_uint8[k++] = x_quantized;
+    input_data_uint8[k++] = ui8Data;
 	data >>= 8;
    }
   }
+  #else
+  for (int i = 0; i < IMG_SIZE; i++) {
+   ui8Data = p_ext_input_data[i];
+   input_data_uint8[i] = ui8Data;
+  }
+  #endif
 
   // Run inference, and report any error
   TfLiteStatus invoke_status = interpreter->Invoke();
