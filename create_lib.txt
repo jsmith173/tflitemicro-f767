@@ -1,0 +1,16 @@
+1.
+MCU GCC Assembler
+ Debugging: None
+ 
+MCU GCC Compiler
+ Debugging: None
+ 
+MCU G++ Assembler
+ Debugging: None
+ 
+2.
+Build
+
+3. 
+{$dev}/Rad Studio/Projects/libtflite -> create_lib.bat (flags are rcsP)
+
